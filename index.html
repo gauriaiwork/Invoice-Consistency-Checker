@@ -5,7 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Intercompany Invoice Consistency Checker | AICA Level 2</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Mozilla PDF.js for Digital PDFs -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <!-- Tesseract.js for Client-Side Image & Scanned Document OCR -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f6f9; }
         .navy-bg { background-color: #0B1F3A; }
@@ -26,19 +29,19 @@
                 <p class="text-sm text-amber-300 mt-1">AICA Level 2 Capstone Project — CA Gauri Save (Batch 104)</p>
             </div>
             <div class="mt-3 md:mt-0 text-xs bg-slate-800 px-3 py-2 rounded border border-slate-600">
-                Client-Side PDF Parser & Deterministic Audit Engine
+                PDF & Image OCR Parser • Deterministic Audit Engine
             </div>
         </div>
     </header>
 
     <main class="max-w-6xl mx-auto py-8 px-4 space-y-6">
 
-        <!-- PDF Upload Section -->
+        <!-- File Upload Section -->
         <div class="bg-white p-5 rounded-lg shadow-sm border border-slate-200 no-print">
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center border-b pb-3 mb-4 gap-2">
                 <div>
                     <h2 class="font-bold text-slate-800 text-lg">Upload Documents for Verification</h2>
-                    <p class="text-xs text-slate-500">Upload your Master Agreement, Certified Revenue Support Schedule, and Invoice PDFs to extract & cross-check automatically.</p>
+                    <p class="text-xs text-slate-500">Supports typed PDFs and scanned images (PDF, JPG, JPEG, PNG). All 3 documents are required and validated by type.</p>
                 </div>
                 <button onclick="clearAll()" class="px-3 py-1.5 text-xs font-medium bg-slate-100 text-slate-700 border border-slate-300 rounded hover:bg-slate-200">
                     Clear / Reset Form
@@ -46,26 +49,32 @@
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                <div class="border-2 border-dashed border-slate-300 rounded-lg p-4 text-center hover:border-slate-500 transition">
+                <!-- Slot 1: Agreement -->
+                <div id="agBox" class="border-2 border-dashed border-slate-300 rounded-lg p-4 text-center hover:border-slate-500 transition">
                     <label class="cursor-pointer block">
-                        <span class="font-semibold text-slate-700 block mb-1">1. Master Agreement (PDF)</span>
-                        <input id="agFile" type="file" accept=".pdf" onchange="handlePdfUpload(event, 'agreement')" class="text-xs text-slate-500 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-white hover:file:bg-slate-700">
+                        <span class="font-semibold text-slate-700 block mb-1">1. Master Agreement</span>
+                        <span class="text-[11px] text-slate-400 block mb-2">(PDF, JPG, JPEG, PNG)</span>
+                        <input id="agFile" type="file" accept=".pdf,.jpg,.jpeg,.png,image/jpeg,image/png,application/pdf" onchange="handleFileUpload(event, 'agreement')" class="text-xs text-slate-500 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-white hover:file:bg-slate-700">
                     </label>
                     <p id="agStatus" class="text-xs text-slate-400 mt-2">No file selected</p>
                 </div>
 
-                <div class="border-2 border-dashed border-slate-300 rounded-lg p-4 text-center hover:border-slate-500 transition">
+                <!-- Slot 2: Revenue Schedule -->
+                <div id="schedBox" class="border-2 border-dashed border-slate-300 rounded-lg p-4 text-center hover:border-slate-500 transition">
                     <label class="cursor-pointer block">
-                        <span class="font-semibold text-slate-700 block mb-1">2. Revenue Schedule (PDF)</span>
-                        <input id="schedFile" type="file" accept=".pdf" onchange="handlePdfUpload(event, 'schedule')" class="text-xs text-slate-500 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-white hover:file:bg-slate-700">
+                        <span class="font-semibold text-slate-700 block mb-1">2. Revenue Support Schedule</span>
+                        <span class="text-[11px] text-slate-400 block mb-2">(PDF, JPG, JPEG, PNG)</span>
+                        <input id="schedFile" type="file" accept=".pdf,.jpg,.jpeg,.png,image/jpeg,image/png,application/pdf" onchange="handleFileUpload(event, 'schedule')" class="text-xs text-slate-500 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-white hover:file:bg-slate-700">
                     </label>
                     <p id="schedStatus" class="text-xs text-slate-400 mt-2">No file selected</p>
                 </div>
 
-                <div class="border-2 border-dashed border-slate-300 rounded-lg p-4 text-center hover:border-slate-500 transition">
+                <!-- Slot 3: Invoice -->
+                <div id="invBox" class="border-2 border-dashed border-slate-300 rounded-lg p-4 text-center hover:border-slate-500 transition">
                     <label class="cursor-pointer block">
-                        <span class="font-semibold text-slate-700 block mb-1">3. Invoice (PDF)</span>
-                        <input id="invFile" type="file" accept=".pdf" onchange="handlePdfUpload(event, 'invoice')" class="text-xs text-slate-500 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-white hover:file:bg-slate-700">
+                        <span class="font-semibold text-slate-700 block mb-1">3. Intercompany Invoice</span>
+                        <span class="text-[11px] text-slate-400 block mb-2">(PDF, JPG, JPEG, PNG)</span>
+                        <input id="invFile" type="file" accept=".pdf,.jpg,.jpeg,.png,image/jpeg,image/png,application/pdf" onchange="handleFileUpload(event, 'invoice')" class="text-xs text-slate-500 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-white hover:file:bg-slate-700">
                     </label>
                     <p id="invStatus" class="text-xs text-slate-400 mt-2">No file selected</p>
                 </div>
@@ -194,509 +203,3 @@
             </div>
 
             <!-- Executive Summary -->
-            <div class="bg-slate-50 border-l-4 border-slate-800 p-4 mb-6 text-sm">
-                <h4 class="font-bold text-slate-800 mb-1">Executive Synthesis:</h4>
-                <p id="execSummary" class="text-slate-700 leading-relaxed"></p>
-            </div>
-
-            <!-- Detailed Findings Table -->
-            <h4 class="font-bold text-slate-800 mb-3 text-sm uppercase tracking-wider">Per-Check Diagnostic Findings</h4>
-            <div class="overflow-x-auto">
-                <table class="w-full text-sm text-left border-collapse border border-slate-200">
-                    <thead>
-                        <tr class="navy-bg text-white text-xs uppercase">
-                            <th class="p-3 border">Severity</th>
-                            <th class="p-3 border">Audit Check</th>
-                            <th class="p-3 border">Diagnostic Finding & Variance Calculation</th>
-                        </tr>
-                    </thead>
-                    <tbody id="findingsTableBody"></tbody>
-                </table>
-            </div>
-
-            <div class="mt-6 pt-4 border-t text-xs text-slate-500 flex justify-between items-center">
-                <span>Disclaimer: Audit-readiness aid generated by deterministic logic. For Tesseract OCR on scanned images & OpenRouter LLM multi-batch memos, run backend/server.py locally.</span>
-                <button onclick="window.print()" class="no-print text-slate-800 font-semibold underline hover:text-blue-700">Save / Print Working Paper (PDF)</button>
-            </div>
-        </div>
-
-    </main>
-
-    <script>
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-
-        let scanWarning = false;
-        let extractionWarnings = [];
-
-        function clearAll() {
-            scanWarning = false;
-            extractionWarnings = [];
-            ['agFile', 'schedFile', 'invFile'].forEach(id => document.getElementById(id).value = '');
-            ['agStatus', 'schedStatus', 'invStatus'].forEach(id => {
-                const el = document.getElementById(id);
-                el.textContent = 'No file selected';
-                el.className = 'text-xs text-slate-400 mt-2';
-            });
-            ['agProvider', 'agRecipient', 'agRate', 'agCurrency', 'agStart', 'agEnd',
-             'schedEntity', 'schedMonth', 'opRev', 'extraInc',
-             'invProvider', 'invRecipient', 'invAmount', 'invCurrency', 'invPeriodStart', 'invPeriodEnd', 'invDate', 'invRefRev']
-                .forEach(id => document.getElementById(id).value = '');
-            document.getElementById('resultsSection').classList.add('hidden');
-        }
-
-        function similarity(s1, s2) {
-            const a = s1.toLowerCase().replace(/[^\w\s]/g, '').trim();
-            const b = s2.toLowerCase().replace(/[^\w\s]/g, '').trim();
-            if (!a || !b) return 0;
-            if (a === b) return 1.0;
-            const matrix = Array.from({ length: a.length + 1 }, (_, i) => [i]);
-            for (let j = 0; j <= b.length; j++) matrix[0][j] = j;
-            for (let i = 1; i <= a.length; i++) {
-                for (let j = 1; j <= b.length; j++) {
-                    const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-                    matrix[i][j] = Math.min(matrix[i - 1][j] + 1, matrix[i][j - 1] + 1, matrix[i - 1][j - 1] + cost);
-                }
-            }
-            return 1 - matrix[a.length][b.length] / Math.max(a.length, b.length);
-        }
-
-        function parseNum(str) {
-            if (!str) return null;
-            const cleaned = str.replace(/[^\d.]/g, '');
-            return cleaned ? parseFloat(cleaned) : null;
-        }
-
-        function parseDateStr(str) {
-            if (!str) return null;
-            const d = new Date(str.trim());
-            return isNaN(d.getTime()) ? null : d;
-        }
-
-        function extractMonthYear(str) {
-            if (!str) return null;
-            const m = str.match(/(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})/i);
-            return m ? `${m[1].charAt(0).toUpperCase() + m[1].slice(1).toLowerCase()} ${m[2]}` : null;
-        }
-
-        async function extractTextFromPDF(file) {
-            const arrayBuffer = await file.arrayBuffer();
-            const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-            let fullText = "";
-            for (let i = 1; i <= pdf.numPages; i++) {
-                const page = await pdf.getPage(i);
-                const content = await page.getTextContent();
-                let lastY = null;
-                let line = "";
-                for (const item of content.items) {
-                    const y = item.transform[5];
-                    if (lastY !== null && Math.abs(y - lastY) > 5) {
-                        fullText += line.trim() + "\n";
-                        line = "";
-                    }
-                    line += item.str + " ";
-                    lastY = y;
-                }
-                fullText += line.trim() + "\n";
-            }
-            return fullText;
-        }
-
-        async function handlePdfUpload(event, type) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const text = await extractTextFromPDF(file);
-            const statusEl = document.getElementById(
-                type === 'agreement' ? 'agStatus' : type === 'schedule' ? 'schedStatus' : 'invStatus'
-            );
-
-            // Reset warnings for this doc type
-            extractionWarnings = extractionWarnings.filter(w => !w.startsWith(`[${type.toUpperCase()}]`));
-
-            if (text.trim().length < 25) {
-                statusEl.textContent = `Scanned PDF detected (${file.name}) — No text layer`;
-                statusEl.className = "text-xs text-amber-600 font-semibold mt-2";
-                if (type === 'invoice') scanWarning = true;
-                return;
-            }
-
-            if (type === 'invoice') scanWarning = false;
-            statusEl.textContent = `Loaded: ${file.name}`;
-            statusEl.className = "text-xs text-emerald-600 font-semibold mt-2";
-
-            if (type === 'agreement') {
-                const clause5Match = text.match(/issued\s+by\s+([A-Z][A-Za-z0-9\s\.,&'-]+?)\s+to\s+([A-Z][A-Za-z0-9\s\.,&'-]+?)(?:\s+and\s+shall|\.|,|\n)/i);
-                const compMatch = text.match(/between:\s*\n?\s*([A-Z][A-Za-z0-9\s\.,&'-]+?),\s*a\s+company/i);
-                const provMatch = text.match(/;\s*and\s*\n?\s*([A-Z][A-Za-z0-9\s\.,&'-]+?),\s*a\s+company/i);
-
-                if (clause5Match) {
-                    document.getElementById('agProvider').value = clause5Match[1].trim();
-                    document.getElementById('agRecipient').value = clause5Match[2].trim();
-                } else {
-                    if (provMatch) document.getElementById('agProvider').value = provMatch[1].trim();
-                    if (compMatch) document.getElementById('agRecipient').value = compMatch[1].trim();
-                }
-                if (!document.getElementById('agProvider').value) {
-                    extractionWarnings.push('[AGREEMENT] Could not auto-detect Service Provider name.');
-                }
-
-                const rateMatch = text.match(/(\d+(?:\.\d+)?)%\s*(?:\([^)]+\))?\s*of the Company['’]s\s+Operating Revenue/i);
-                if (rateMatch) document.getElementById('agRate').value = parseFloat(rateMatch[1]);
-                else extractionWarnings.push('[AGREEMENT] Could not auto-detect contractual fee percentage.');
-
-                const ccyMatch = text.match(/denominated in\s+[\w\s]+?\s*\(([A-Z]{3})\)/i) || text.match(/\b(INR|USD|EUR|GBP)\b/);
-                if (ccyMatch) document.getElementById('agCurrency').value = ccyMatch[1].toUpperCase();
-
-                const termMatch = text.match(/commence on\s+(\d{1,2}\s+[A-Za-z]+\s+\d{4}).*?(?:until|ending)\s+(\d{1,2}\s+[A-Za-z]+\s+\d{4})/is);
-                if (termMatch) {
-                    document.getElementById('agStart').value = termMatch[1].trim();
-                    document.getElementById('agEnd').value = termMatch[2].trim();
-                }
-            }
-
-            if (type === 'schedule') {
-                const issuedByMatch = text.match(/Issued\s+by[:\s]+(?:Finance\s*&\s*Accounts,\s*)?([^\n]+)/i);
-                if (issuedByMatch) document.getElementById('schedEntity').value = issuedByMatch[1].trim();
-
-                const mMatch = text.match(/(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})/i);
-                if (mMatch) document.getElementById('schedMonth').value = `${mMatch[1]} ${mMatch[2]}`;
-
-                const opMatch = text.match(/Operating Revenue(?:\s*\([^)]*\))?[^\d\n]*([0-9,]+(?:\.[0-9]+)?)/i);
-                if (opMatch) document.getElementById('opRev').value = parseNum(opMatch[1]);
-                else extractionWarnings.push('[SCHEDULE] Could not auto-detect Operating Revenue figure.');
-
-                // Strictly match only the line containing Extraordinary Income before Total Revenue
-                const exLineMatch = text.match(/Extraordinary\s*\/\s*Non-Operating Income[^\n]*/i);
-                if (exLineMatch) {
-                    const lineClean = exLineMatch[0].split(/Total Revenue/i)[0];
-                    if (lineClean.toLowerCase().includes('nil')) {
-                        document.getElementById('extraInc').value = 0;
-                    } else {
-                        const nums = lineClean.match(/[0-9,]{4,}/g);
-                        document.getElementById('extraInc').value = nums ? parseNum(nums[nums.length - 1]) : 0;
-                    }
-                } else {
-                    document.getElementById('extraInc').value = 0;
-                }
-            }
-
-            if (type === 'invoice') {
-                const fromMatch = text.match(/From[:\s]+([^\n]+)/i);
-                if (fromMatch) document.getElementById('invProvider').value = fromMatch[1].split(',')[0].trim();
-                else extractionWarnings.push('[INVOICE] Could not auto-detect "From" Service Provider.');
-
-                const toMatch = text.match(/To[:\s]+([^\n]+)/i);
-                if (toMatch) document.getElementById('invRecipient').value = toMatch[1].split(',')[0].trim();
-
-                const dateMatch = text.match(/Invoice\s*Date[:\s]+(\d{1,2}\s+[A-Za-z]+\s+\d{4})/i);
-                if (dateMatch) document.getElementById('invDate').value = dateMatch[1].trim();
-
-                const periodMatch = text.match(/Period\s*Covered[:\s]+(\d{1,2}\s+[A-Za-z]+\s+\d{4})\s+to\s+(\d{1,2}\s+[A-Za-z]+\s+\d{4})/i);
-                if (periodMatch) {
-                    document.getElementById('invPeriodStart').value = periodMatch[1].trim();
-                    document.getElementById('invPeriodEnd').value = periodMatch[2].trim();
-                }
-
-                const refMatch = text.match(/\d+(?:\.\d+)?%\s*of\s*(?:Total\s+Operating\s+Revenue|Operating\s+Revenue|Total\s+Revenue)[^\d]*([0-9,]{4,}(?:\.[0-9]+)?)/i);
-                if (refMatch) document.getElementById('invRefRev').value = parseNum(refMatch[1]);
-
-                const amtMatch = text.match(/Total Due[^\d]*([0-9,]+(?:\.[0-9]+)?)/i);
-                if (amtMatch) document.getElementById('invAmount').value = parseNum(amtMatch[1]);
-                else extractionWarnings.push('[INVOICE] Could not auto-detect Total Due amount.');
-
-                const ccyMatch = text.match(/(?:Settlement Currency|Currency)[:\s]*([A-Z]{3})/i) || text.match(/\b(INR|USD|EUR|GBP)\b/);
-                if (ccyMatch) document.getElementById('invCurrency').value = ccyMatch[1].toUpperCase();
-            }
-        }
-
-        function fmt(num) {
-            return Number(num).toLocaleString('en-IN');
-        }
-
-        function runReconciliation() {
-            const agProvider = document.getElementById('agProvider').value.trim();
-            const agRecipient = document.getElementById('agRecipient').value.trim();
-            const agRate = parseFloat(document.getElementById('agRate').value) || 0;
-            const agCcy = document.getElementById('agCurrency').value.trim().toUpperCase();
-            const agStart = parseDateStr(document.getElementById('agStart').value);
-            const agEnd = parseDateStr(document.getElementById('agEnd').value);
-
-            const schedEntity = document.getElementById('schedEntity').value.trim();
-            const schedMonthRaw = document.getElementById('schedMonth').value.trim();
-            const opRev = parseFloat(document.getElementById('opRev').value) || 0;
-            const extraInc = parseFloat(document.getElementById('extraInc').value) || 0;
-            const totalRev = opRev + extraInc;
-
-            const invProvider = document.getElementById('invProvider').value.trim();
-            const invRecipient = document.getElementById('invRecipient').value.trim();
-            const invAmt = parseFloat(document.getElementById('invAmount').value) || 0;
-            const invCcy = document.getElementById('invCurrency').value.trim().toUpperCase();
-            const invPeriodStartStr = document.getElementById('invPeriodStart').value.trim();
-            const invPeriodEndStr = document.getElementById('invPeriodEnd').value.trim();
-            const invDateStr = document.getElementById('invDate').value.trim();
-            const invPeriodStart = parseDateStr(invPeriodStartStr);
-            const invPeriodEnd = parseDateStr(invPeriodEndStr);
-            const invDate = parseDateStr(invDateStr);
-            const invRefRev = parseFloat(document.getElementById('invRefRev').value);
-
-            if (!agProvider && !invProvider && opRev === 0 && invAmt === 0 && !scanWarning) {
-                alert("Please upload your PDF documents (or enter agreement, schedule, and invoice details) before running reconciliation.");
-                return;
-            }
-
-            const findings = [];
-
-            if (scanWarning) {
-                findings.push({
-                    severity: 'REVIEW',
-                    check: 'Extraction Confidence (Scanned PDF)',
-                    detail: 'Uploaded PDF has no embedded text layer. Client-side JS cannot run Tesseract OCR — run backend/server.py locally for full OCR extraction, or enter values manually above.'
-                });
-            }
-
-            extractionWarnings.forEach(w => {
-                findings.push({
-                    severity: 'REVIEW',
-                    check: 'PDF Field Extraction Warning',
-                    detail: `${w} Please verify or enter the value manually.`
-                });
-            });
-
-            // 1a. Service Provider Match ("From")
-            if (!agProvider || !invProvider) {
-                findings.push({
-                    severity: 'REVIEW',
-                    check: 'Service Provider Missing',
-                    detail: 'Service Provider name missing from either Agreement or Invoice.'
-                });
-            } else {
-                const simScore = similarity(agProvider, invProvider);
-                const simPct = Math.round(simScore * 100);
-                if (simScore >= 0.80) {
-                    findings.push({
-                        severity: 'OK',
-                        check: 'Service Provider Match',
-                        detail: `Invoice issuer '${invProvider}' matches agreement Service Provider '${agProvider}' (similarity: ${simPct}%).`
-                    });
-                } else {
-                    findings.push({
-                        severity: 'CRITICAL',
-                        check: 'Service Provider Mismatch',
-                        detail: `Invoice issuer '${invProvider}' does not match contracted Service Provider '${agProvider}' (similarity: ${simPct}% < 80% threshold).`
-                    });
-                }
-            }
-
-            // 1b. Recipient / Company Match ("To")
-            if (agRecipient && invRecipient) {
-                const recSim = similarity(agRecipient, invRecipient);
-                const recPct = Math.round(recSim * 100);
-                if (recSim >= 0.80) {
-                    findings.push({
-                        severity: 'OK',
-                        check: 'Recipient Entity Match',
-                        detail: `Invoice billed-to entity '${invRecipient}' matches contracted Company '${agRecipient}' (similarity: ${recPct}%).`
-                    });
-                } else {
-                    findings.push({
-                        severity: 'CRITICAL',
-                        check: 'Recipient Entity Mismatch',
-                        detail: `Invoice billed-to entity '${invRecipient}' does not match contracted Company '${agRecipient}' (similarity: ${recPct}% < 80% threshold).`
-                    });
-                }
-            }
-
-            // 1c. Schedule Issuer Match
-            if (agRecipient && schedEntity) {
-                const schedSim = similarity(agRecipient, schedEntity);
-                if (schedSim < 0.80) {
-                    findings.push({
-                        severity: 'CRITICAL',
-                        check: 'Schedule Entity Mismatch',
-                        detail: `Revenue Support Schedule was issued by '${schedEntity}', which does not match contracted Company '${agRecipient}'.`
-                    });
-                }
-            }
-
-            // 2. Currency Validation
-            const ccyMismatch = agCcy && invCcy && agCcy !== invCcy;
-            if (!agCcy || !invCcy) {
-                findings.push({
-                    severity: 'REVIEW',
-                    check: 'Currency Missing',
-                    detail: 'Currency code missing from Agreement or Invoice.'
-                });
-            } else if (ccyMismatch) {
-                findings.push({
-                    severity: 'CRITICAL',
-                    check: 'Currency Mismatch',
-                    detail: `Invoice denominated in ${invCcy}, whereas Master Agreement mandates ${agCcy}.`
-                });
-            } else {
-                findings.push({
-                    severity: 'OK',
-                    check: 'Currency Match',
-                    detail: `Invoice currency (${invCcy}) matches Master Agreement.`
-                });
-            }
-
-            // 3a. Period Within Agreement Term
-            if (invPeriodStart && agStart && agEnd) {
-                if (invPeriodStart < agStart || (invPeriodEnd && invPeriodEnd > agEnd)) {
-                    findings.push({
-                        severity: 'CRITICAL',
-                        check: 'Period Outside Agreement Term',
-                        detail: `Invoice billing period (${invPeriodStartStr}) falls outside effective contract tenure (${document.getElementById('agStart').value} to ${document.getElementById('agEnd').value}).`
-                    });
-                } else {
-                    findings.push({
-                        severity: 'OK',
-                        check: 'Period Within Term',
-                        detail: `Invoice billing period (${invPeriodStartStr} to ${invPeriodEndStr || 'end'}) falls within effective contract tenure.`
-                    });
-                }
-            }
-
-            // 3b. Contractual 15-Day Invoicing Window Check (Clause 2)
-            if (invPeriodEnd && invDate) {
-                const diffDays = Math.round((invDate - invPeriodEnd) / (1000 * 60 * 60 * 24));
-                if (diffDays < 0) {
-                    findings.push({
-                        severity: 'FLAG',
-                        check: 'Premature Invoice Date',
-                        detail: `Invoice date (${invDateStr}) precedes the end of the billing period (${invPeriodEndStr}), contrary to monthly-in-arrears billing under Clause 2.`
-                    });
-                } else if (diffDays > 15) {
-                    findings.push({
-                        severity: 'FLAG',
-                        check: 'Late Invoice Issuance (>15 Days)',
-                        detail: `Invoice raised ${diffDays} days after period end (${invDateStr} vs ${invPeriodEndStr}), exceeding the 15-day window stipulated in Clause 2.`
-                    });
-                } else {
-                    findings.push({
-                        severity: 'OK',
-                        check: 'Timely Issuance (Clause 2)',
-                        detail: `Invoice raised ${diffDays} days after period end (within the 15-day contractual window).`
-                    });
-                }
-            }
-
-            // 3c. Billing Month vs. Schedule Month Mismatch Check
-            const invMonthYear = extractMonthYear(invPeriodStartStr);
-            const schedMonthYear = extractMonthYear(schedMonthRaw);
-            const monthMismatch = invMonthYear && schedMonthYear && (invMonthYear.toLowerCase() !== schedMonthYear.toLowerCase());
-
-            if (monthMismatch) {
-                findings.push({
-                    severity: 'CRITICAL',
-                    check: 'Schedule Period Mismatch',
-                    detail: `Invoice covers ${invMonthYear}, whereas the uploaded Revenue Support Schedule is for ${schedMonthYear}. Cannot validate fee against a different month's schedule.`
-                });
-            } else if (invMonthYear && schedMonthYear) {
-                findings.push({
-                    severity: 'OK',
-                    check: 'Schedule Period Match',
-                    detail: `Invoice period (${invMonthYear}) aligns with certified Revenue Support Schedule (${schedMonthYear}).`
-                });
-            }
-
-            // 4a. Referenced Revenue Base Check
-            if (!monthMismatch && !isNaN(invRefRev) && invRefRev > 0 && opRev > 0 && Math.abs(invRefRev - opRev) > 5) {
-                if (extraInc > 0 && Math.abs(invRefRev - totalRev) <= 5) {
-                    findings.push({
-                        severity: 'CRITICAL',
-                        check: 'Fee Base Includes Extraordinary Income',
-                        detail: `Invoice references revenue base of ${fmt(invRefRev)}, matching Total Revenue (${fmt(opRev)} Operating + ${fmt(extraInc)} Extraordinary) rather than Operating Revenue alone per Clause 2.`
-                    });
-                } else {
-                    findings.push({
-                        severity: 'FLAG',
-                        check: 'Referenced Revenue Mismatch',
-                        detail: `Invoice references revenue base of ${fmt(invRefRev)}, differing from certified Operating Revenue of ${fmt(opRev)}.`
-                    });
-                }
-            }
-
-            // 4b. Fee Amount & Rate Diagnostic
-            const displayMonth = invMonthYear || schedMonthRaw || "Billing Period";
-            const expectedFee = opRev * (agRate / 100);
-            const expectedOnTotal = totalRev * (agRate / 100);
-            const diff = invAmt - expectedFee;
-
-            if (monthMismatch) {
-                findings.push({
-                    severity: 'REVIEW',
-                    check: 'Fee Amount Not Verifiable',
-                    detail: `Fee verification skipped because Revenue Support Schedule for ${invMonthYear} was not provided (uploaded schedule is for ${schedMonthYear}).`
-                });
-            } else if (ccyMismatch) {
-                findings.push({
-                    severity: 'REVIEW',
-                    check: 'Fee Amount Not Comparable',
-                    detail: `Cross-currency comparison skipped. Expected contractual fee is ${agCcy} ${fmt(expectedFee)} (${agRate}% of ${displayMonth} Operating Revenue).`
-                });
-            } else if (opRev === 0 || agRate === 0) {
-                findings.push({
-                    severity: 'REVIEW',
-                    check: 'Fee Amount Not Verifiable',
-                    detail: 'Missing Operating Revenue or Contractual Fee % to compute expected fee.'
-                });
-            } else if (Math.abs(diff) <= 5) {
-                findings.push({
-                    severity: 'OK',
-                    check: 'Fee Amount & Rate Match',
-                    detail: `Invoiced amount (${invCcy} ${fmt(invAmt)}) matches ${agRate}% of ${displayMonth} Operating Revenue (${agCcy} ${fmt(opRev)}).`
-                });
-            } else if (extraInc > 0 && Math.abs(invAmt - expectedOnTotal) <= 5) {
-                const overcharge = invAmt - expectedFee;
-                findings.push({
-                    severity: 'CRITICAL',
-                    check: 'Fee Computed on Total Revenue',
-                    detail: `Invoiced amount (${invCcy} ${fmt(invAmt)}) equals ${agRate}% of Total Revenue (${agCcy} ${fmt(totalRev)}), improperly including Extraordinary Income of ${agCcy} ${fmt(extraInc)}. Overcharge: ${agCcy} ${fmt(overcharge)}.`
-                });
-            } else {
-                const impliedRate = opRev > 0 ? ((invAmt / opRev) * 100).toFixed(2) : 0;
-                findings.push({
-                    severity: 'CRITICAL',
-                    check: 'Incorrect Fee Percentage Applied',
-                    detail: `Invoiced amount (${invCcy} ${fmt(invAmt)}) reflects an effective fee rate of ${impliedRate}% on Operating Revenue (${agCcy} ${fmt(opRev)}), instead of the contractual ${agRate}%. Variance: ${invCcy} ${fmt(diff)} (${diff > 0 ? 'overbilled' : 'underbilled'}).`
-                });
-            }
-
-            let status = 'OK';
-            if (findings.some(f => f.severity === 'CRITICAL')) status = 'CRITICAL';
-            else if (findings.some(f => f.severity === 'FLAG')) status = 'FLAG';
-            else if (findings.some(f => f.severity === 'REVIEW')) status = 'REVIEW';
-
-            const badge = document.getElementById('overallBadge');
-            badge.textContent = `VERDICT: ${status}`;
-            badge.className = `mt-2 md:mt-0 px-4 py-1.5 rounded-full font-bold text-sm ${
-                status === 'CRITICAL' ? 'bg-rose-100 text-rose-800 border border-rose-300' :
-                status === 'FLAG' || status === 'REVIEW' ? 'bg-amber-100 text-amber-800 border border-amber-300' :
-                'bg-emerald-100 text-emerald-800 border border-emerald-300'
-            }`;
-
-            const criticalItems = findings.filter(f => f.severity === 'CRITICAL').map(f => f.check);
-            document.getElementById('execSummary').textContent = criticalItems.length > 0
-                ? `Reconciliation for ${displayMonth} flagged CRITICAL discrepancies: ${criticalItems.join(', ')}. Immediate hold on invoice posting and counterparty clarification is recommended prior to settlement.`
-                : `Reconciliation for ${displayMonth} verified successfully against contractual terms and certified Operating Revenue (${agCcy} ${fmt(opRev)}). ${status === 'REVIEW' || status === 'FLAG' ? 'Manual review required before final approval.' : 'Invoice is cleared for processing.'}`;
-
-            const tbody = document.getElementById('findingsTableBody');
-            tbody.innerHTML = '';
-            findings.forEach(f => {
-                const colorClass = f.severity === 'CRITICAL' ? 'text-rose-700 font-bold' :
-                                   (f.severity === 'FLAG' || f.severity === 'REVIEW') ? 'text-amber-700 font-bold' : 'text-emerald-700 font-bold';
-                tbody.innerHTML += `
-                    <tr class="border-b hover:bg-slate-50">
-                        <td class="p-3 border ${colorClass}">${f.severity}</td>
-                        <td class="p-3 border font-semibold text-slate-800">${f.check}</td>
-                        <td class="p-3 border text-slate-700">${f.detail}</td>
-                    </tr>
-                `;
-            });
-
-            document.getElementById('resultsSection').classList.remove('hidden');
-        }
-    </script>
-</body>
-</html>
